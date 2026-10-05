@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Header } from '@/components/Header'
@@ -65,9 +65,6 @@ export default function App() {
   })
   const { pluginStates, colorOverrides } = editState
 
-  const svgsRef = useRef(svgs)
-  svgsRef.current = svgs
-
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   const addFilesInputRef = useRef<HTMLInputElement>(null)
 
@@ -117,9 +114,9 @@ export default function App() {
 
   const handleAddFiles = useCallback(async (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return
-    const valid = await processSvgFiles(fileList, svgsRef.current.length)
+    const valid = await processSvgFiles(fileList, svgs.length)
     if (valid.length > 0) handleSvgsInput(valid)
-  }, [handleSvgsInput])
+  }, [svgs.length, handleSvgsInput])
 
   const handlePasteInput = useCallback((svg: string) => {
     const item: SvgItem = {
@@ -178,10 +175,14 @@ export default function App() {
 
   // Trigger re-optimization whenever plugin states change (toggle, reset, undo, redo).
   // Color overrides don't need re-optimization — they're applied as a post-step.
+  // An Effect Event reads the latest svgs without re-running on every svgs change.
+  const reoptimizeAll = useEffectEvent((states: Record<string, boolean>) => {
+    if (svgs.length === 0) return
+    triggerOptimize(svgs, states)
+  })
   useEffect(() => {
-    if (svgsRef.current.length === 0) return
-    triggerOptimize(svgsRef.current, pluginStates)
-  }, [pluginStates, triggerOptimize])
+    reoptimizeAll(pluginStates)
+  }, [pluginStates])
 
   // Cmd/Ctrl+Z = undo, Cmd/Ctrl+Shift+Z = redo. Ignored when typing in inputs.
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { buildSvgoConfig } from '@/lib/svgo-config'
 
 export interface OptimizeJob {
@@ -25,9 +25,26 @@ export function useSvgoQueue(callbacks: SvgoQueueCallbacks): UseSvgoQueueResult 
   const workerRef = useRef<Worker | null>(null)
   const epochRef = useRef(0)
   const callbacksRef = useRef(callbacks)
-  callbacksRef.current = callbacks
+  // Keep the latest callbacks for the worker handlers without re-creating the worker.
+  useLayoutEffect(() => {
+    callbacksRef.current = callbacks
+  })
 
   const queueRef = useRef<{ epoch: number; jobs: OptimizeJob[]; index: number; config: ReturnType<typeof buildSvgoConfig> } | null>(null)
+
+  const runNext = useCallback(() => {
+    const queue = queueRef.current
+    const worker = workerRef.current
+    if (!queue || !worker) return
+    const job = queue.jobs[queue.index]
+    if (!job) return
+    callbacksRef.current.onStart(job.id)
+    worker.postMessage({
+      id: `${queue.epoch}|${job.id}`,
+      svg: job.svg,
+      config: queue.config,
+    })
+  }, [])
 
   useEffect(() => {
     const worker = new Worker(
@@ -76,21 +93,7 @@ export function useSvgoQueue(callbacks: SvgoQueueCallbacks): UseSvgoQueueResult 
     return () => {
       worker.terminate()
     }
-  }, [])
-
-  const runNext = useCallback(() => {
-    const queue = queueRef.current
-    const worker = workerRef.current
-    if (!queue || !worker) return
-    const job = queue.jobs[queue.index]
-    if (!job) return
-    callbacksRef.current.onStart(job.id)
-    worker.postMessage({
-      id: `${queue.epoch}|${job.id}`,
-      svg: job.svg,
-      config: queue.config,
-    })
-  }, [])
+  }, [runNext])
 
   const cancel = useCallback(() => {
     epochRef.current++
