@@ -1,0 +1,61 @@
+# Used by Railpack (Railway's builder) instead of its default static-site Caddyfile.
+# Based on https://github.com/railwayapp/railpack/blob/main/core/providers/node/Caddyfile.template,
+# extended with cache headers for Vite's content-hashed assets.
+{
+	admin off
+	persist_config off
+	auto_https off
+
+	log {
+		format json
+	}
+
+	servers {
+		trusted_proxies static private_ranges 100.0.0.0/8 # trust railway's proxy
+	}
+}
+
+:{$PORT:80} {
+	log {
+		format json
+	}
+
+	respond /health 200
+
+	header {
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+
+	# Vite fingerprints everything in /assets, so those files never change.
+	# Everything else (index.html, public/ files) must be revalidated so deploys show up immediately.
+	# Only existing files, so a 404 never gets cached for a year.
+	@hashed {
+		path /assets/*
+		file
+	}
+	@unhashed not path /assets/*
+	header @hashed Cache-Control "public, max-age=31536000, immutable"
+	header @unhashed Cache-Control "public, max-age=0, must-revalidate"
+
+	root * {{.DIST_DIR}}
+
+	file_server {
+		hide .git
+		hide .env*
+	}
+
+	encode {
+		gzip
+		zstd
+	}
+
+	# Like try_files, but never for /assets: a chunk that no longer exists (requested by a tab
+	# opened before the last deploy) must 404 instead of returning index.html.
+	# try_files can't take a matcher, hence the explicit rewrite.
+	@spa {
+		not path /assets/*
+		file {path} {path}.html {path}/index.html{{if .IndexFallback}} /index.html{{end}}
+	}
+	rewrite @spa {file_match.relative}
+}

@@ -33,6 +33,24 @@ npm run build
 
 The production build is output to `dist/`.
 
+## Deployment
+
+Deployed on [Railway](https://railway.com/), which builds and deploys every push to `main`.
+
+- `.railway/railway.ts`: [Infrastructure as Code](https://docs.railway.com/infrastructure-as-code) for the Railway service (GitHub source, `/health` health check, EU West region, custom domain). Railway does not read it on deploy. After changing it, apply it from a directory linked to the "SVG Studio" project:
+
+  ```bash
+  railway link        # once: select the "SVG Studio" project, production environment
+  railway config plan # review: must only list the svg-studio service
+  railway config apply
+  ```
+
+- Builder: [Railpack](https://railpack.com/), Railway's default for new services.
+- `Caddyfile`: Railpack serves `dist/` with Caddy. This replaces Railpack's default config with the same setup, plus long-lived cache headers for the content-hashed files in `/assets`. `{{.DIST_DIR}}` and `{{.IndexFallback}}` are filled in by Railpack at build time.
+- Node version: taken from `engines.node` in `package.json`.
+
+No environment variables are needed.
+
 ## License
 
 MIT
