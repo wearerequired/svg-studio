@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { Loader2, AlertCircle } from 'lucide-react'
 import { formatBytes, calculateSavings, cn } from '@/lib/utils'
 
@@ -41,18 +41,16 @@ interface ThumbnailCardProps {
 }
 
 function ThumbnailCard({ item, selected, onSelect }: ThumbnailCardProps) {
-  const [blobUrl, setBlobUrl] = useState<string | null>(null)
+  const { displaySvg } = item
 
-  useEffect(() => {
-    if (!item.displaySvg) {
-      setBlobUrl(null)
-      return
-    }
-    const blob = new Blob([item.displaySvg], { type: 'image/svg+xml' })
-    const url = URL.createObjectURL(blob)
-    setBlobUrl(url)
+  // The blob URL lives exactly as long as the <img> shows this SVG: created when the
+  // ref attaches, revoked by the ref cleanup (React 19) on change or unmount.
+  const imgRef = useCallback((img: HTMLImageElement | null) => {
+    if (!img || !displaySvg) return
+    const url = URL.createObjectURL(new Blob([displaySvg], { type: 'image/svg+xml' }))
+    img.src = url
     return () => URL.revokeObjectURL(url)
-  }, [item.displaySvg])
+  }, [displaySvg])
 
   const savings = calculateSavings(item.originalSize, item.optimizedSize)
   const isPending = item.status === 'pending' || item.status === 'optimizing'
@@ -75,9 +73,9 @@ function ThumbnailCard({ item, selected, onSelect }: ThumbnailCardProps) {
             <AlertCircle className="h-4 w-4 text-destructive" />
             <span className="text-[10px] text-destructive line-clamp-2">{item.error ?? 'Error'}</span>
           </div>
-        ) : blobUrl ? (
+        ) : displaySvg ? (
           <img
-            src={blobUrl}
+            ref={imgRef}
             alt={item.filename}
             className="h-full w-full object-contain p-3"
           />

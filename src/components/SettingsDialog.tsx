@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Moon, Sun, Monitor, Check } from 'lucide-react'
 import {
   Dialog,
@@ -47,24 +47,32 @@ export function SettingsDialog({
   optimizedSuffix,
   setOptimizedSuffix,
 }: SettingsDialogProps) {
-  const [customInput, setCustomInput] = useState(primaryColor ?? '#000000')
+  // Text the user is typing into the hex field. Null means "show the stored color",
+  // so the field follows preset clicks and starts fresh each time the dialog opens.
+  const [draftHex, setDraftHex] = useState<string | null>(null)
+  const customInput = draftHex ?? primaryColor ?? '#000000'
 
-  // Keep the custom input in sync when the dialog re-opens with a different stored color.
-  useEffect(() => {
-    if (open) setCustomInput(primaryColor ?? '#000000')
-  }, [open, primaryColor])
+  const selectColor = (color: string | null) => {
+    setDraftHex(null)
+    setPrimaryColor(color)
+  }
+
+  const handleOpenChange = (next: boolean) => {
+    if (!next) setDraftHex(null)
+    onOpenChange(next)
+  }
 
   const isPreset = primaryColor !== null && (PRESET_PRIMARY_COLORS as readonly string[]).includes(primaryColor)
   const isDefault = primaryColor === null
   const isCustom = !isDefault && !isPreset
 
   const handleCustomChange = (value: string) => {
-    setCustomInput(value)
+    setDraftHex(value)
     if (isValidHex(value)) setPrimaryColor(value.toLowerCase())
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
@@ -106,7 +114,7 @@ export function SettingsDialog({
             <SwatchButton
               ariaLabel="Default (black)"
               selected={isDefault}
-              onClick={() => setPrimaryColor(null)}
+              onClick={() => selectColor(null)}
               isDefault
             />
             {PRESET_PRIMARY_COLORS.map(color => (
@@ -115,7 +123,7 @@ export function SettingsDialog({
                 ariaLabel={color}
                 color={color}
                 selected={primaryColor === color}
-                onClick={() => setPrimaryColor(color)}
+                onClick={() => selectColor(color)}
               />
             ))}
           </div>
