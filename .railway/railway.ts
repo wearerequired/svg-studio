@@ -15,6 +15,8 @@ export default defineRailway(() => {
     replicas: { "europe-west4-drams3a": 1 },
     // Caddy listens on $PORT, so pin it to the port the custom domain routes to.
     env: { PORT: "8080" },
+    // The CLI can't register new custom domains: add a domain in the dashboard
+    // first, then list it here so the config stays in sync.
     domains: [{ domain: "svg-studio.required.com", port: 8080 }],
   });
 

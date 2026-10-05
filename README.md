@@ -45,6 +45,8 @@ Deployed on [Railway](https://railway.com/), which builds and deploys every push
   railway config apply
   ```
 
+  New custom domains can't be created this way: add them in the Railway dashboard (service → Settings → Networking) first, then list them in `domains` so `railway config plan` reports no changes.
+
 - Builder: [Railpack](https://railpack.com/), Railway's default for new services.
 - `Caddyfile`: Railpack serves `dist/` with Caddy. This replaces Railpack's default config with the same setup, plus long-lived cache headers for the content-hashed files in `/assets`. `{{.DIST_DIR}}` and `{{.IndexFallback}}` are filled in by Railpack at build time.
 - Node version: taken from `engines.node` in `package.json`.
